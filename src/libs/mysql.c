@@ -24,7 +24,7 @@ static MYSQL * mysql_conn;
 #define CHK_ERR(x) \
 		if (x != NULL) {\
 			if(mysql_errno(x) != 0) {\
-		 		_log(LH_LIB, B_LOG_CRIT,"mysql error: %s", mysql_error(x)); \
+		 		_log(LH_LIB, B_LOG_CRIT,"mysql error: %s - %s:%d", mysql_error(x),  __FILE__, __LINE__); \
       		 		return -1; \
       			}\
       		} else {\
@@ -35,7 +35,7 @@ static MYSQL * mysql_conn;
 #define CHK_ERR_NULL(x) \
 		if (x != NULL) {\
 			if(mysql_errno(x) != 0) {\
-		 		_log(LH_LIB, B_LOG_CRIT,"mysql error: %s", mysql_error(x)); \
+		 		_log(LH_LIB, B_LOG_CRIT,"mysql error: %s - %s:%d", mysql_error(x), __FILE__, __LINE__); \
       		 		return NULL; \
       			}\
       		} else {\
@@ -49,11 +49,11 @@ static MYSQL * mysql_conn;
 #define NAME "MYSQL Connector"
 #define DLVERSION  "1.5.0"
 
-#define SERVER_MAP_SELECTOR "select server_id, server_ip, server_name, server_ico, server_enabled, server_port, server_dead, server_flap_seconds, server_notify, server_ssh_keyfile, server_ssh_passphrase, server_ssh_username, enabled_triggers, default_service_type, orch_id from servers"
+#define SERVER_MAP_SELECTOR "select server_id, server_ip, server_name, server_ico, server_enabled, server_port, server_dead, server_flap_seconds, server_notify, server_ssh_keyfile, server_ssh_passphrase, server_ssh_username, enabled_triggers, default_service_type, orch_id from servers  %s"
 
 
-#define SERVICE_MAP_SELECTOR "select service_id, service_name, service_state, service_plugin, service_args, UNIX_TIMESTAMP(service_last_check), service_interval, service_text, service_notify, service_type, service_var, service_passive_timeout,service_active, service_check_timeout, service_ack_enabled, service_retain, service_snmp_community, service_snmp_objid, service_snmp_version, service_snmp_warning, service_snmp_critical, service_snmp_type, flap_seconds, service_exec_plan, renotify_interval, escalate_divisor, fires_events, enabled_triggers, service_snmp_textmatch, UNIX_TIMESTAMP(service_last_notify_send), UNIX_TIMESTAMP(service_last_state_change),service_retain_current, service_ack_current, server_id, service_handled, orch_id   from services svc ORDER BY RAND()"
-#define WORKER_SELECTOR "select worker_mail, worker_icq, visible_services ,notify_levels, worker_active, worker_name, worker_id, password, enabled_triggers, escalation_limit, escalation_minutes, notify_plan, visible_servers, selected_services, selected_servers, is_super_user, notification_aggregation_interval, orch_id from workers"
+#define SERVICE_MAP_SELECTOR "select service_id, service_name, service_state, service_plugin, service_args, UNIX_TIMESTAMP(service_last_check), service_interval, service_text, service_notify, service_type, service_var, service_passive_timeout,service_active, service_check_timeout, service_ack_enabled, service_retain, service_snmp_community, service_snmp_objid, service_snmp_version, service_snmp_warning, service_snmp_critical, service_snmp_type, flap_seconds, service_exec_plan, renotify_interval, escalate_divisor, fires_events, enabled_triggers, service_snmp_textmatch, UNIX_TIMESTAMP(service_last_notify_send), UNIX_TIMESTAMP(service_last_state_change),service_retain_current, service_ack_current, server_id, service_handled, orch_id   from services svc %s ORDER BY RAND()"
+#define WORKER_SELECTOR "select worker_mail, worker_icq, visible_services ,notify_levels, worker_active, worker_name, worker_id, password, enabled_triggers, escalation_limit, escalation_minutes, notify_plan, visible_servers, selected_services, selected_servers, is_super_user, notification_aggregation_interval, orch_id from workers  %s"
 #define SERVICE_UPDATE_TEXT "update services set service_last_check=FROM_UNIXTIME(%d), service_text='%s', service_state=%d, service_last_notify_send=FROM_UNIXTIME(%d), service_last_state_change=FROM_UNIXTIME(%d), service_ack_current=%d, service_retain_current=%d, service_handled=%d where service_id=%ld"
 
 
@@ -64,6 +64,8 @@ static MYSQL * mysql_conn;
 #define SERVER_SELECTOR "select server_name, server_ip, server_port, server_ico, server_enabled, server_notify, server_flap_seconds, server_dead, server_ssh_keyfile, server_ssh_passphrase, server_ssh_username, enabled_triggers, default_service_type, orch_id from servers where server_id=%d"
 #define SERVER_CHANGE_ID "update servers set server_id=%d where server_id=%d"
 #define SERVER_CHANGE_SERVICES "update services set server_id=%d where server_id=%d"
+#define SERVER_CHANGE_SERVICES_ORCH_ID "update services set orch_id=%d where server_id=%d"
+
 
 #define SERVER_UPDATE_TEXT "update servers set server_enabled='%d', server_notify='%d' where server_id=%ld"
 
@@ -90,7 +92,7 @@ static MYSQL * mysql_conn;
 #define UPDATE_DOWNTIME "update downtime set downtime_notice='%s', downtime_from=%d,downtime_to=%d, service_id=%d, downtime_type=%d, orch_id=%d where downtime_id=%ld"
 #define DEL_DOWNTIME "delete from downtime where downtime_id=%d"
 #define ADD_DOWNTIME "INSERT INTO downtime(downtime_type, downtime_from,downtime_to,service_id, downtime_notice,orch_id) VALUES(%d,%d,%d,%d, '%s', '%d')"
-#define DOWNTIME_SEL "select downtime_id, downtime_type, downtime_from, downtime_to, downtime_notice, service_id, orch_id from downtime"
+#define DOWNTIME_SEL "select downtime_id, downtime_type, downtime_from, downtime_to, downtime_notice, service_id, orch_id from downtime %s"
 #define DOWNTIME_CHANGE_ID "update downtime set downtime_id=%d where downtime_id=%d"
 
 
@@ -98,14 +100,14 @@ static MYSQL * mysql_conn;
 #define UPDATE_SERVERGROUP "update servergroups set servergroup_name='%s', servergroup_notify=%d,servergroup_active=%d, servergroup_members='%s', servergroup_dead=%d, enabled_triggers='%s', orch_id=%d where servergroup_id=%ld"
 #define DEL_SERVERGROUP "delete from servergroups where servergroup_id=%d"
 #define ADD_SERVERGROUP "INSERT INTO servergroups(servergroup_name, servergroup_notify,servergroup_active,servergroup_members, servergroup_dead, enabled_triggers, orch_id) VALUES('%s', %d,%d,'%s', %d, '%s', '%d')"
-#define SERVERGROUP_SEL "select servergroup_id, servergroup_name, servergroup_notify, servergroup_active, servergroup_members, servergroup_dead, enabled_triggers, orch_id from servergroups"
+#define SERVERGROUP_SEL "select servergroup_id, servergroup_name, servergroup_notify, servergroup_active, servergroup_members, servergroup_dead, enabled_triggers, orch_id from servergroups %s"
 #define SERVERGROUP_CHANGE_ID "update servergroups set servergroup_id=%d where servergroup_id=%d"
 
 
 #define UPDATE_SERVICEGROUP "update servicegroups set servicegroup_name='%s', servicegroup_notify=%d,servicegroup_active=%d, servicegroup_members='%s', servicegroup_dead=%d, enabled_triggers='%s', orch_id=%d where servicegroup_id=%ld"
 #define DEL_SERVICEGROUP "delete from servicegroups where servicegroup_id=%d"
 #define ADD_SERVICEGROUP "INSERT INTO servicegroups(servicegroup_name, servicegroup_notify,servicegroup_active,servicegroup_members, servicegroup_dead, enabled_triggers,orch_id) VALUES('%s', %d,%d,'%s', %d, '%s', '%d')"
-#define SERVICEGROUP_SEL "select servicegroup_id, servicegroup_name, servicegroup_notify, servicegroup_active, servicegroup_members, servicegroup_dead, enabled_triggers,orch_id from servicegroups"
+#define SERVICEGROUP_SEL "select servicegroup_id, servicegroup_name, servicegroup_notify, servicegroup_active, servicegroup_members, servicegroup_dead, enabled_triggers,orch_id from servicegroups %s"
 #define SERVICEGROUP_CHANGE_ID "update servicegroups set servicegroup_id=%d where servicegroup_id=%d"
 
 
@@ -643,7 +645,7 @@ int AddDowntime(struct downtime * svc, char *config) {
 	return rtc;	
 }	
 
-int GetDowntimeMap(struct downtime * svcs, char * config) {
+int GetDowntimeMap(struct downtime * svcs, char * config, int orch_id) {
 	
 	MYSQL *mysql;
 	MYSQL_ROW  row;
@@ -656,19 +658,32 @@ int GetDowntimeMap(struct downtime * svcs, char * config) {
 	char * mysql_db = getConfigValue("mysql_db", config);
 	int i=0;
 	
-	
+	char * sql, *where;
 
 
+	set_cfg(config);
 	mysql=mysql_init(NULL);
 		CHK_ERR(mysql);
 	mysql=mysql_real_connect(mysql, mysql_host, mysql_user, mysql_pw, NULL, 0, NULL, 0);
 		CHK_ERR(mysql);
       	mysql_select_db(mysql, mysql_db);
       		CHK_ERR(mysql);
-	
-	
-	mysql_query(mysql, DOWNTIME_SEL);
+      		
+
+      	if(orch_id > 0) {
+      		asprintf(&where, " where orch_id=%d", orch_id);
+      	} else {
+      		asprintf(&where, " ");
+      	}
+      	asprintf(&sql, DOWNTIME_SEL, where);
+
+      	mysql_query(mysql, sql);
 		CHK_ERR(mysql);
+
+		
+		free(where);
+		free(sql);
+
       	res = mysql_store_result(mysql);
       		CHK_ERR(mysql);
       	
@@ -1681,6 +1696,17 @@ int ModifyServer(struct server * svc, char *config) {
 	
 	
 	free(sqlupd);
+
+
+	//update services - if orch_id changed
+
+	asprintf(&sqlupd, SERVER_CHANGE_SERVICES_ORCH_ID,svc->orch_id, svc->server_id);	
+
+	mysql_query(mysql, sqlupd);
+	CHK_ERR(mysql);
+	free(sqlupd);
+	
+
 	rtc=1;
 	mysql_close(mysql);
 		
@@ -1777,6 +1803,7 @@ int AddServer(struct server * svc, char *config) {
 	
 	asprintf(&sqlupd, ADD_SERVER, svc->server_name, svc->client_ip, svc->client_port, svc->server_icon, svc->server_enabled, svc->server_notify, svc->server_flap_seconds, svc->server_dead, svc->server_ssh_keyfile, svc->server_ssh_passphrase, svc->server_ssh_username, svc->enabled_triggers, svc->default_service_type, svc->orch_id);
 	
+
 	//Log("dbg", sqlupd);
 	
 	mysql_query(mysql, sqlupd);
@@ -1899,7 +1926,7 @@ int doUpdate(struct service * svc, char * config) {
 	return 1;
 }
 
-int GetWorkerMap(struct worker * svcs, char * config) {
+int GetWorkerMap(struct worker * svcs, char * config, int orch_id) {
 	
 	MYSQL *mysql;
 	MYSQL_ROW  row;
@@ -1912,19 +1939,33 @@ int GetWorkerMap(struct worker * svcs, char * config) {
 	char * mysql_db = getConfigValue("mysql_db", config);
 	int i=0;
 	
-	
+char * sql, *where;
 
 
+	set_cfg(config);
 	mysql=mysql_init(NULL);
 		CHK_ERR(mysql);
 	mysql=mysql_real_connect(mysql, mysql_host, mysql_user, mysql_pw, NULL, 0, NULL, 0);
 		CHK_ERR(mysql);
       	mysql_select_db(mysql, mysql_db);
       		CHK_ERR(mysql);
-	
-	
-	mysql_query(mysql, WORKER_SELECTOR);
+      		
+
+      	if(orch_id > 0) {
+      		asprintf(&where, " where orch_id=%d", orch_id);
+      	} else {
+      		asprintf(&where, " ");
+      	}
+      	asprintf(&sql, WORKER_SELECTOR, where);
+
+      	mysql_query(mysql, sql);
 		CHK_ERR(mysql);
+
+		
+		free(where);
+		free(sql);
+	
+
       	res = mysql_store_result(mysql);
       		CHK_ERR(mysql);
       	
@@ -2050,6 +2091,7 @@ int GetWorkerMap(struct worker * svcs, char * config) {
       		return i;
       	} else { 
       		_log(LH_LIB, B_LOG_INFO, "no worker found!");	
+      		return 0;
       	}
 	
 	
@@ -2064,7 +2106,7 @@ int GetWorkerMap(struct worker * svcs, char * config) {
 	
 	
 }
-int GetServiceMap(struct service * svcs, char * config) {
+int GetServiceMap(struct service * svcs, char * config, int orch_id) {
 	
 	MYSQL *mysql;
 	MYSQL_ROW  row;
@@ -2075,6 +2117,10 @@ int GetServiceMap(struct service * svcs, char * config) {
 	char * mysql_pw = getConfigValue("mysql_pw", config);
 	char * mysql_db = getConfigValue("mysql_db", config);
 	int i=0;
+
+	char * sql, *where;
+
+
 	set_cfg(config);
 	mysql=mysql_init(NULL);
 		CHK_ERR(mysql);
@@ -2083,8 +2129,21 @@ int GetServiceMap(struct service * svcs, char * config) {
       	mysql_select_db(mysql, mysql_db);
       		CHK_ERR(mysql);
       		
-      	mysql_query(mysql, SERVICE_MAP_SELECTOR);
+
+      	if(orch_id > 0) {
+      		asprintf(&where, " where orch_id=%d", orch_id);
+      	} else {
+      		asprintf(&where, " ");
+      	}
+      	asprintf(&sql, SERVICE_MAP_SELECTOR, where);
+
+      	mysql_query(mysql, sql);
 		CHK_ERR(mysql);
+
+		
+		free(where);
+		free(sql);
+
       	res = mysql_store_result(mysql);
       		CHK_ERR(mysql);
       		
@@ -2231,7 +2290,7 @@ int GetServiceMap(struct service * svcs, char * config) {
 8 =  server_notify
 
 */
-int GetServerMap(struct server * srv, char * config) {
+int GetServerMap(struct server * srv, char * config, int orch_id) {
 	
 	MYSQL *mysql;
 	MYSQL_ROW  row;
@@ -2242,6 +2301,10 @@ int GetServerMap(struct server * srv, char * config) {
 	char * mysql_pw = getConfigValue("mysql_pw", config);
 	char * mysql_db = getConfigValue("mysql_db", config);
 	int i=0;
+	
+	char * sql, *where;
+
+
 	set_cfg(config);
 	mysql=mysql_init(NULL);
 		CHK_ERR(mysql);
@@ -2250,9 +2313,22 @@ int GetServerMap(struct server * srv, char * config) {
       	mysql_select_db(mysql, mysql_db);
       		CHK_ERR(mysql);
       		
-      	mysql_query(mysql, SERVER_MAP_SELECTOR);
+
+      	if(orch_id > 0) {
+      		asprintf(&where, " where orch_id=%d", orch_id);
+      	} else {
+      		asprintf(&where, " ");
+      	}
+      	asprintf(&sql, SERVER_MAP_SELECTOR, where);
+
+      	mysql_query(mysql, sql);
 		CHK_ERR(mysql);
-      	res = mysql_store_result(mysql);
+
+		
+		free(where);
+		free(sql);
+
+	res = mysql_store_result(mysql);
       		CHK_ERR(mysql);
       		
       		
@@ -2402,7 +2478,7 @@ int ServerGroupChangeId(int from, int to, char * config) {
 	return to;	
 }
 
-int GetServerGroupMap(struct servergroup * svcs, char * config) {
+int GetServerGroupMap(struct servergroup * svcs, char * config, int orch_id) {
 	
 	MYSQL *mysql;
 	MYSQL_ROW  row;
@@ -2415,20 +2491,34 @@ int GetServerGroupMap(struct servergroup * svcs, char * config) {
 	char * mysql_db = getConfigValue("mysql_db", config);
 	int i=0;
 	
-	
+		char * sql, *where;
 
 
+	set_cfg(config);
 	mysql=mysql_init(NULL);
 		CHK_ERR(mysql);
 	mysql=mysql_real_connect(mysql, mysql_host, mysql_user, mysql_pw, NULL, 0, NULL, 0);
 		CHK_ERR(mysql);
       	mysql_select_db(mysql, mysql_db);
       		CHK_ERR(mysql);
-	
-	
-	mysql_query(mysql, SERVERGROUP_SEL);
-	
+      		
+
+      	if(orch_id > 0) {
+      		asprintf(&where, " where orch_id=%d", orch_id);
+      	} else {
+      		asprintf(&where, " ");
+      	}
+      	asprintf(&sql, SERVERGROUP_SEL, where);
+
+      	mysql_query(mysql, sql);
 		CHK_ERR(mysql);
+
+		
+		free(where);
+		free(sql);
+
+
+	
       	res = mysql_store_result(mysql);
       		CHK_ERR(mysql);
       	
@@ -2684,7 +2774,7 @@ int ServiceGroupChangeId(int from, int to, char * config) {
 	return to;	
 }
 
-int GetServiceGroupMap(struct servicegroup * svcs, char * config) {
+int GetServiceGroupMap(struct servicegroup * svcs, char * config, int orch_id) {
 	
 	MYSQL *mysql;
 	MYSQL_ROW  row;
@@ -2697,21 +2787,34 @@ int GetServiceGroupMap(struct servicegroup * svcs, char * config) {
 	char * mysql_db = getConfigValue("mysql_db", config);
 	int i=0;
 	
-	
+	char * sql, *where;
 
 
+	set_cfg(config);
 	mysql=mysql_init(NULL);
 		CHK_ERR(mysql);
 	mysql=mysql_real_connect(mysql, mysql_host, mysql_user, mysql_pw, NULL, 0, NULL, 0);
 		CHK_ERR(mysql);
       	mysql_select_db(mysql, mysql_db);
       		CHK_ERR(mysql);
-	
-	
-	mysql_query(mysql, SERVICEGROUP_SEL);
-	
+      		
+
+      	if(orch_id > 0) {
+      		asprintf(&where, " where orch_id=%d", orch_id);
+      	} else {
+      		asprintf(&where, " ");
+      	}
+      	asprintf(&sql, SERVICEGROUP_SEL, where);
+
+      	mysql_query(mysql, sql);
 		CHK_ERR(mysql);
-      	res = mysql_store_result(mysql);
+
+		
+		free(where);
+		free(sql);
+
+
+	res = mysql_store_result(mysql);
       		CHK_ERR(mysql);
       	
       	

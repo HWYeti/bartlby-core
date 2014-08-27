@@ -93,6 +93,7 @@ void catch_signal(int signum) {
 function: sched_write_back_all
 input: Configfile, shm_address, SOHandle
 writes all shm changes back to database 
+***** the reason we do not use local_svc_count (with kicked out useless services is, that portier may change status of objects - so they are still relevant to writeback)
 */
 
 void sched_write_back_all(char * cfgfile, void * shm_addr, void * SOHandle) {
@@ -113,6 +114,7 @@ void sched_write_back_all(char * cfgfile, void * shm_addr, void * SOHandle) {
 	LOAD_SYMBOL(doUpdate,SOHandle, "doUpdate");
 	LOAD_SYMBOL(doUpdateServer,SOHandle, "doUpdateServer");
 	
+
 	for(x=0; x<gshm_hdr->svccount; x++) {
 		if(doUpdate(&services[x], cfgfile) != 1) {
 			_log(LH_SCHED, B_LOG_CRIT, "doUpdate() failed in sched_writeback_all() '%s` for service id: %d", strerror(errno), services[x].service_id);		
@@ -1133,10 +1135,18 @@ int schedule_loop(char * cfgfile, void * shm_addr, void * SOHandle) {
 		free(cfg_g_micros_before_after_check);
 	}
 	
+	long local_svc_count=0;
+	long local_idx=0;
 	//Make a second sortable array
 	for(x=0; x<gshm_hdr->svccount; x++) {
-			ssort[x].svc=&services[x];	
+			if(bartlby_orchestra_belongs_to_orch(&services[x], cfgfile) < 0) {
+				continue; 		//Kick from sched circle if service never would be checked
+			}
+			ssort[local_idx].svc=&services[x];	
+			local_idx++;
+			local_svc_count++;
 	}
+	_log(LH_SCHED, B_LOG_DEBUG,"Scheduler working on %ld Services after kick: %ld", gshm_hdr->svccount, local_idx);
 	
 	cfg_sched_mode = getConfigValue("sched_mode", cfgfile);
 	
@@ -1210,15 +1220,15 @@ int schedule_loop(char * cfgfile, void * shm_addr, void * SOHandle) {
 		
 		
 		//Sort ascending on delay time so most delayed service will be checked rapidly ;)
-		if(gshm_hdr->svccount>0) {
-			qsort(ssort, gshm_hdr->svccount-1, sizeof(struct service_sort), cmpservice);
+		if(local_svc_count>0) {
+			qsort(ssort, local_svc_count-1, sizeof(struct service_sort), cmpservice);
 		}
 		
 		
 		shortest_intervall=10;
 		getloadavg(current_load, 3);
 		sched_definitiv_running();
-		for(x=0; x<gshm_hdr->svccount; x++) {
+		for(x=0; x<local_svc_count-1; x++) {
 			
 			
 			if(do_shutdown == 1 || gshm_hdr->do_reload == 1 || gshm_hdr->do_reload == 2) {
@@ -1226,9 +1236,10 @@ int schedule_loop(char * cfgfile, void * shm_addr, void * SOHandle) {
 			}
 			
 			
+			
 			if(gshm_hdr->current_running < cfg_max_parallel || (int)current_load[0] < cfg_max_load) { 
 				if(sched_check_waiting(shm_addr, ssort[x].svc, cfgfile, SOHandle, sched_pause) == 1) {
-					
+										
 					if(sched_mode == SCHED_MODE_WORKER) {
 						worker_slot=sched_find_open_worker();						
 						if(worker_slot < 0) {
@@ -1288,7 +1299,7 @@ int schedule_loop(char * cfgfile, void * shm_addr, void * SOHandle) {
 			_log(LH_SCHED, B_LOG_DEBUG,"AGGREGATION RUN");
 			bartlby_notification_log_aggregate(gshm_hdr, cfgfile);
 		} 
-
+		bartlby_orchestra_check_timeouts(services, gshm_hdr, cfgfile);
 		round_start=time(NULL);
 		round_visitors=0;
 		
@@ -1299,6 +1310,7 @@ int schedule_loop(char * cfgfile, void * shm_addr, void * SOHandle) {
 	
 	
 }
+
 
 
 

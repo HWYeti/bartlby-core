@@ -53,6 +53,7 @@
 #define LH_LIB 12
 #define LH_PORTIER 13
 #define LH_MOD 14
+#define LH_ORCH 15
 
 	
 #define B_LOG_DEBUG 0
@@ -62,7 +63,7 @@
 #define B_LOG_HASTO 4
 
 
-static char * log_handles[] = {"DEBUG", "TRIGGER", "SCHED", "CHECK", "MAIN", "SHM", "DAEMON", "PERF", "ACK", "EVNT", "EXT", "NOTIFYLOG", "LIB", "PORTIER", "MOD"};
+static char * log_handles[] = {"DEBUG", "TRIGGER", "SCHED", "CHECK", "MAIN", "SHM", "DAEMON", "PERF", "ACK", "EVNT", "EXT", "NOTIFYLOG", "LIB", "PORTIER", "MOD", "ORCH"};
 static char * log_levels[] = {"DEBUG", "INFO", "WARN", "CRIT", "HASTO"};
 
 /* DEBUGGING */
@@ -591,7 +592,7 @@ int replication_go(char *, void *, void *);
 
 //SHM
 
-int GetDowntimeMap(struct downtime * svcs, char * config);
+int GetDowntimeMap(struct downtime * svcs, char * config, int orch_id);
 struct service * bartlby_SHM_ServiceMap(void *);
 struct sched_threads * bartlby_SHM_ThreadMap(void * shm_addr);
 struct downtime * bartlby_SHM_DowntimeMap(void * shm_addr);
@@ -668,6 +669,13 @@ int sched_servicegroup_active(struct service * svc);
 int bartlby_agent_tcp_my_connect(char *host_name,int port,int *sd,char *proto, struct service * svc);
 int bartlby_agent_tcp_connect(char *host_name,int port,int *sd, struct service * svc);
 
+
+
+//Orchestra
+int bartlby_orchestra_get_id(char * cfgfile);
+void bartlby_orchestra_init(struct shm_header * shmhdr);
+int bartlby_orchestra_belongs_to_orch(struct service * svc, char * cfgfile);
+void bartlby_orchestra_check_timeouts(struct service * svcmap,struct shm_header * hdr, char * cfgfile);
 
 //Notification Log
 int bartlby_notification_log_last_notification_state(struct shm_header * shmhdr, char * cfgfile, long svc_id, long worker_id, char * trigger_name);
