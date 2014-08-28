@@ -58,10 +58,13 @@ void bartlby_portier_get_plugin_info(long service_id);
 void bartlby_portier_exec_trigger(char * cfgfile, int standby_workers_only, char * execline, char * trigger_name, int service_id, int server_id, int notify_last_state, int current_state, int recovery_outstanding, int node_id, char * passwd);
 void bartlby_portier_exec_trigger_line(char * cfgfile, int standby_workers_only, char * execline, char * trigger_name, int service_id, int server_id, int notify_last_state, int current_state, int recovery_outstanding, int node_id, char * passwd);
 
+void bartlby_portier_set_svc_state(long service_id, char * service_text, long current_state,long last_notify_send,long last_state_change,long service_ack_current,long service_retain_current,long handled, long last_check);
 
 
 
-
+void bartlby_portier_set_svc_state(long service_id, char * service_text, long current_state,long last_notify_send,long last_state_change,long service_ack_current,long service_retain_current,long handled, long last_check) {
+	printf("-123 not impl. '%s' \n", service_text);
+}
 
 
 void bartlby_portier_exec_trigger_line(char * cfgfile, int standby_workers_only, char * execline, char * trigger_name, int service_id, int server_id, int notify_last_state, int current_state, int recovery_outstanding, int node_id, char * passwd) {
@@ -329,7 +332,7 @@ int main(int argc, char ** argv) {
 
 	//buffers:
 	char textbuffer1[2048],textbuffer2[2048],textbuffer3[2048];
-	long longbuffer1, longbuffer2;
+	long longbuffer1, longbuffer2, longbuffer3, longbuffer4, longbuffer5, longbuffer6, longbuffer7, longbuffer8;
 	int intbuffer1, intbuffer2, intbuffer3,intbuffer4,intbuffer5,intbuffer6,intbuffer7;
 
 	
@@ -480,8 +483,15 @@ int main(int argc, char ** argv) {
 		PORTIER_CLEANUP
 		exit(1);
 	}
+	if(sscanf(inputbuffer, "8|%ld|%ld|%ld|%ld|%ld|%ld|%ld|%ld|%2047[^\n|]s", &longbuffer1,  &longbuffer1, &longbuffer3, &longbuffer4,&longbuffer5,&longbuffer6,&longbuffer7, &longbuffer8, &textbuffer1) == 9) {
+		//8|8|Plugin does not exist (/opt/bartlby-agent/plugins//init)|1|1409175456|1409175457|0|6|0| SVC OBJ STATE
+		bartlby_portier_set_svc_state(longbuffer1, textbuffer1, longbuffer2,longbuffer3,longbuffer4,longbuffer5,longbuffer6,longbuffer7, longbuffer8);
+		PORTIER_CLEANUP
+		exit(1);
+	}
+	printf("'%s' - %d\n", textbuffer1, intbuffer1);
 	//%d|%d|%s|%s|%d|%d|%d|%d|%d|%d|%s|\n
-
+	printf("-1111 unkown command\n");
 	exit(1);
 
 

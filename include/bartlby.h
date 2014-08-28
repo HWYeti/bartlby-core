@@ -36,6 +36,7 @@
 #include <mysql/mysql.h>
 #include <sys/times.h> 
 #include <semaphore.h>
+#include <json.h>
 
 /* Log Handles */
 #define LH_DEBUG 0
@@ -676,6 +677,7 @@ int bartlby_orchestra_get_id(char * cfgfile);
 void bartlby_orchestra_init(struct shm_header * shmhdr);
 int bartlby_orchestra_belongs_to_orch(struct service * svc, char * cfgfile);
 void bartlby_orchestra_check_timeouts(struct service * svcmap,struct shm_header * hdr, char * cfgfile);
+void bartlby_orchestra_send_svc(char * cfg, struct service * svc);
 
 //Notification Log
 int bartlby_notification_log_last_notification_state(struct shm_header * shmhdr, char * cfgfile, long svc_id, long worker_id, char * trigger_name);

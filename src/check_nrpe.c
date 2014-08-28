@@ -86,8 +86,8 @@ static unsigned long crc32_table[256];
 #define MAX_PACKETBUFFER_LENGTH 1024
 #define OK		0
 #define DEFAULT_SOCKET_TIMEOUT  10
-#define TRUE            1
-#define FALSE           0
+//#define TRUE            1
+//#define FALSE           0
 #define MAX_INPUT_BUFFER        2048
 #define DEFAULT_SERVER_PORT 5666
 #define DEFAULT_NRPE_COMMAND    "_NRPE_CHECK"  /* check version of NRPE daemon */
@@ -98,8 +98,8 @@ static unsigned long crc32_table[256];
 #define OK		0
 #define ERROR		-1
 
-#define TRUE		1
-#define FALSE		0
+//#define TRUE		1
+//#define FALSE		0
 
 
 typedef struct packet_struct{
