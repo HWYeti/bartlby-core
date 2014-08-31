@@ -53,7 +53,7 @@ static sig_atomic_t portier_connection_timed_out=0;
 
 
 static void bartlby_portier_conn_timeout(int signo) {
-	portier_connection_timed_out=1;
+ 	portier_connection_timed_out = 1;
 }
 
 //Caller has to free
@@ -74,13 +74,39 @@ char * bartlby_portier_fetch_reply(int sock) {
 }
 
 void bartlby_portier_disconnect(int sock) {
+	json_object * jso_out;
+	jso_out = json_object_new_object();
+	json_object_object_add(jso_out, "method", json_object_new_string("exit"));
+	bartlby_portier_send(jso_out, sock);
 	close(sock);
+
+	json_object_put(jso_out);
 }
 
-int bartlby_portier_send_cmd(json_object * obj, char * host, int port) {
-	int sock;
+int bartlby_portier_send_no_result(json_object * obj, int sock) {
+	char * reply;
+	json_object * json_error, * json_errormsg, *rjso;
+	if(bartlby_portier_send(obj, sock) >0) {
+    	reply=bartlby_portier_fetch_reply(sock);
+    	rjso=json_tokener_parse(reply);
+    	if(rjso) {
+    		json_object_object_get_ex(rjso, "error_code", &json_error);
+    		json_object_object_get_ex(rjso, "error_msg", &json_errormsg);
+			if(json_object_get_int(json_error) < 0) {
+				_log(LH_MAIN, B_LOG_CRIT, "Remote JSON COMMAND failed with '%s'", json_object_get_string(json_errormsg));
+			}    else { 			
+    			_log(LH_MAIN, B_LOG_DEBUG, "Remote JSON COMMAND returned with error_code '%ld'", json_object_get_int(json_error));
+    		}
+    		json_object_put(rjso);
+    	} else {
+    		_log(LH_MAIN, B_LOG_CRIT, "JSON PARSE ERROR on '%s'", reply);
+    	}
+    	free(reply);
+    }	
+    bartlby_portier_disconnect(sock);
+}
+int bartlby_portier_send(json_object * obj, int sock) {
 
-	sock = bartlby_portier_connect(host, port);
 	const char * json_package = json_object_to_json_string(obj);
 
 
@@ -113,24 +139,30 @@ int bartlby_portier_connect(char *host_name,int port){
    hints.ai_family = AF_UNSPEC;
    hints.ai_socktype = SOCK_STREAM;
 	
+	 portier_connection_timed_out=0;
+	
+	
 	 result = getaddrinfo(host_name, ipvservice, &hints, &res);
-	 if(result < 0) {
+	 if(result < 0 || portier_connection_timed_out != 0) {
 	 		return -7;
 	}
 	ressave = res;
-	 
 	sockfd-1;
+	
 	while (res) {
+		
         sockfd = socket(res->ai_family,
                         res->ai_socktype,
                         res->ai_protocol);
-
+        
         if (!(sockfd < 0)) {
-            if (connect(sockfd, res->ai_addr, res->ai_addrlen) == 0)
+            if (connect(sockfd, res->ai_addr, res->ai_addrlen) == 0) {
                 break;
-
+            }
+        	    
             close(sockfd);
             sockfd=-1;
+            
         }
     res=res->ai_next;
   }
@@ -248,6 +280,9 @@ int bartlby_portier_send_trigger(char * passive_host, int passive_port, int pass
 	int client_connect_retval=-1;
 	struct sigaction act1, oact1;
 	
+
+	json_object * jso_out, *jso_in, *jso_err_code, *jso_errmsg;
+
 	
 	portier_connection_timed_out=0;
 	
@@ -277,21 +312,7 @@ int bartlby_portier_send_trigger(char * passive_host, int passive_port, int pass
 	} 
 	portier_connection_timed_out=0;
 
-	res=client_socket;
-	if(res > 0) {
-		
-		portier_connection_timed_out=0;
-		alarm(5);
-		if(read(res, verstr, 1024) < 0) {
-			_log(LH_TRIGGER, B_LOG_CRIT, "UPSTREAM FAILED1!\n");
-			return -1;
-		}
-		if(verstr[0] != '+') {
-			_log(LH_TRIGGER, B_LOG_CRIT,"UPSTREAM: Server said a bad result: '%s'\n", verstr);
-			close(res);
-			return -1;
-		}
-		alarm(0);
+	
 		/*
 		svc->service_id
 		svc->server_id
@@ -300,41 +321,41 @@ int bartlby_portier_send_trigger(char * passive_host, int passive_port, int pass
 		svc->recovery_outstanding
 		*/	
 		if(svc != NULL) {
-			sprintf(cmdstr, "%d|%d|%s|%s|%d|%d|%d|%d|%d|%d|%s|\n", passive_cmd, to_standbys, execline, trigger_name, svc->service_id, svc->server_id, svc->notify_last_state, svc->current_state, svc->recovery_outstanding, node_id, portier_passwd);
+			jso_out = json_object_new_object();
+			json_object_object_add(jso_out, "method", json_object_new_string("exec_trigger"));
+			json_object_object_add(jso_out, "standby_workers_only", json_object_new_int(to_standbys));
+			json_object_object_add(jso_out, "execline", json_object_new_string(execline));
+			json_object_object_add(jso_out, "trigger_name", json_object_new_string(trigger_name));
+			json_object_object_add(jso_out, "service_id", json_object_new_int64(svc->service_id));
+			json_object_object_add(jso_out, "server_id", json_object_new_int64(svc->server_id));
+			json_object_object_add(jso_out, "notifiy_last_state", json_object_new_int(svc->notify_last_state));
+			json_object_object_add(jso_out, "current_state", json_object_new_int(svc->current_state));
+			json_object_object_add(jso_out, "recovery_outstanding", json_object_new_int(svc->recovery_outstanding));
+			json_object_object_add(jso_out, "node_id", json_object_new_int(node_id));
+			json_object_object_add(jso_out, "passwd", json_object_new_string(portier_passwd));
+			
+			bartlby_portier_send_no_result(jso_out, client_socket);
+
+			json_object_put(jso_out);			
 		} else {
-			sprintf(cmdstr, "%d|%d|%s|%s|%d|%d|%d|%d|%d|%d|%s|\n", passive_cmd, to_standbys, execline, trigger_name, 0, 0, 0, 0, 0, node_id, portier_passwd);
+			jso_out = json_object_new_object();
+			json_object_object_add(jso_out, "method", json_object_new_string("exec_trigger_line"));
+			json_object_object_add(jso_out, "execline", json_object_new_string(execline));
+			json_object_object_add(jso_out, "passwd", json_object_new_string(portier_passwd));
+			
+			bartlby_portier_send_no_result(jso_out, client_socket);
+
+			json_object_put(jso_out);	
+
+
+
 		}
-		//_log("UPSTREAM: sending '%s'", cmdstr);
-		portier_connection_timed_out=0;
-		alarm(5);
-		if(write(res, cmdstr, 1024) < 0) {
-			//_log("UPSTREAM: FAILED2");
-			return -1;
-		}
-		alarm(0);
-		portier_connection_timed_out=0;
-		alarm(5);
-		if((rc=read(res, result, 1024)) < 0) {
-			_log(LH_TRIGGER, B_LOG_DEBUG,"UPSTREAM: FAILED3");
-			return -1;
-		}
-		alarm(0);
-		result[rc-1]='\0'; //cheap trim *fg*
-		close(res);			
-		if(result[0] != '+') {
-			_log(LH_TRIGGER, B_LOG_DEBUG,"UPSTREAM: FAILED4 - '%s'\n", result);
-			return -1;
-		}  else {
-			//_log("UPSTREAM DONE: %s\n", result);
-			return 0;
-		}
-		
-	} else {
-		_log(LH_TRIGGER, B_LOG_DEBUG,"UPSTREAM: FAILED5");
-		return -1;
-	}	
+
+
+
 	return 0;
 }
+
 
 
 

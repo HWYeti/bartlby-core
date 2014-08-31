@@ -65,7 +65,7 @@ void bartlby_portier_find_server_id(const char * server_name);
 void bartlby_portier_find_services(long server_id);
 void bartlby_portier_get_plugin_info(long service_id);
 void bartlby_portier_exec_trigger(char * cfgfile, int standby_workers_only, const char * execline, const char * trigger_name, int service_id, int server_id, int notify_last_state, int current_state, int recovery_outstanding, int node_id, const char * passwd);
-void bartlby_portier_exec_trigger_line(char * cfgfile, int standby_workers_only, const char * execline,const char * trigger_name, int service_id, int server_id, int notify_last_state, int current_state, int recovery_outstanding, int node_id, const char * passwd);
+void bartlby_portier_exec_trigger_line(char * cfgfile, const char * execline, const char * passwd);
 
 void bartlby_portier_set_svc_state(long service_id, char * service_text, long current_state,long last_notify_send,long last_state_change,long service_ack_current,long service_retain_current,long handled, long last_check);
 
@@ -76,8 +76,9 @@ void bartlby_portier_set_svc_state(long service_id, char * service_text, long cu
 }
 
 
-void bartlby_portier_exec_trigger_line(char * cfgfile, int standby_workers_only, const char * execline, const char * trigger_name,  int service_id, int server_id, int notify_last_state, int current_state, int recovery_outstanding, int node_id, const char * passwd) {
+void bartlby_portier_exec_trigger_line(char * cfgfile, const char * execline, const char * passwd) {
 
+	
 	char * portier_passwd;
 	
 	int x;
@@ -596,6 +597,17 @@ int main(int argc, char ** argv) {
 				 }
 
 				 /*
+				 METHOD: exit
+				 PURPOSE: closes connection
+				 ON-ERROR: error_code < 0 and "error_msg" set to a text
+				 << {"method": "exit"}
+				 >> NONE
+				 */
+				 if(strcmp(json_object_get_string(jso_method), "exit") == 0) {
+					exit(2);
+				 }
+
+				 /*
 				 METHOD: server_checks_needed
 				 PURPOSE: get a list of services from server specified by server_id, wich need to be checked - respecting there settings (e.g.: is timerange reached etc.)
 				 ON-ERROR: error_code < 0 and "error_msg" set to a text
@@ -696,29 +708,13 @@ int main(int argc, char ** argv) {
 				 >> {"error_code": 0, "execline": "/opt/bartlby/trigger/bartlby_load.sh", "output": "Sent SMS" }
 				 */
 				 if(strcmp(json_object_get_string(jso_method), "exec_trigger_line") == 0) {
-					if( json_object_object_get_ex(jso_in, "standby_workers_only", &jsoo[0]) &&
-						json_object_object_get_ex(jso_in, "execline", &jsoo[1]) &&
-						json_object_object_get_ex(jso_in, "trigger_name", &jsoo[2]) &&
-						json_object_object_get_ex(jso_in, "service_id", &jsoo[3]) &&
-						json_object_object_get_ex(jso_in, "server_id", &jsoo[4]) &&
-						json_object_object_get_ex(jso_in, "notifiy_last_state", &jsoo[5]) &&
-						json_object_object_get_ex(jso_in, "current_state", &jsoo[6]) &&
-						json_object_object_get_ex(jso_in, "recovery_outstanding", &jsoo[7]) &&
-						json_object_object_get_ex(jso_in, "node_id", &jsoo[8]) &&
-						json_object_object_get_ex(jso_in, "passwd", &jsoo[9])
+						if(	json_object_object_get_ex(jso_in, "execline", &jsoo[0]) &&
+							json_object_object_get_ex(jso_in, "passwd", &jsoo[1])
 						) {
 							
 							bartlby_portier_exec_trigger_line(argv[ARGV_IDX], 
-														json_object_get_int(jsoo[0]),
-														json_object_get_string(jsoo[1]),
-														json_object_get_string(jsoo[2]),
-														json_object_get_int64(jsoo[3]),
-														json_object_get_int64(jsoo[4]),
-														json_object_get_int(jsoo[5]),
-														json_object_get_int(jsoo[6]),
-														json_object_get_int(jsoo[7]),
-														json_object_get_int(jsoo[8]),
-														json_object_get_string(jsoo[9])
+														json_object_get_string(jsoo[0]),
+														json_object_get_string(jsoo[1])														
 														);
 			
 							PORTIER_CLEANUP;
