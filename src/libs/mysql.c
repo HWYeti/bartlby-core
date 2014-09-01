@@ -21,14 +21,21 @@
 static int db_is_connected=0;
 static MYSQL * mysql_conn;
 
+#define CHK_FREE_CRED if(mysql_user != NULL) { free(mysql_user); } \
+					   if(mysql_pw != NULL) { free(mysql_user); } \
+					   if(mysql_host != NULL) { free(mysql_host); } \
+					   if(mysql_db != NULL) { free(mysql_db); }
+
 #define CHK_ERR(x) \
 		if (x != NULL) {\
 			if(mysql_errno(x) != 0) {\
 		 		_log(LH_LIB, B_LOG_CRIT,"mysql error: %s - %s:%d", mysql_error(x),  __FILE__, __LINE__); \
+		 			CHK_FREE_CRED; \
       		 		return -1; \
       			}\
       		} else {\
       			_log(LH_LIB, B_LOG_CRIT,"Mysql Error %s:%d", __FILE__, __LINE__); \
+      			CHK_FREE_CRED; \
       			return -1; \
       		}
 
@@ -36,10 +43,12 @@ static MYSQL * mysql_conn;
 		if (x != NULL) {\
 			if(mysql_errno(x) != 0) {\
 		 		_log(LH_LIB, B_LOG_CRIT,"mysql error: %s - %s:%d", mysql_error(x), __FILE__, __LINE__); \
+		 			CHK_FREE_CRED; \
       		 		return NULL; \
       			}\
       		} else {\
       			_log(LH_LIB, B_LOG_CRIT,"Mysql Error %s:%d", __FILE__, __LINE__); \
+      			CHK_FREE_CRED; \
       			return NULL; \
       		}      		
 
