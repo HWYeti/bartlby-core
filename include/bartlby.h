@@ -697,6 +697,6 @@ int json_object_object_get_ex(struct json_object* jso, const char *key, struct j
 #endif
 
 #ifdef NEEDS_JSON_INT64
-struct json_object* json_object_new_int64(int64_t i);
+struct json_object* json_object_get_int64(int64_t i);
 #endif
 
