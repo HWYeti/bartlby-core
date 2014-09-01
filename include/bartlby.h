@@ -689,3 +689,14 @@ void bartlby_notification_log_add(struct shm_header * shmhdr, char * cfgfile, lo
 void bartlby_notification_log_aggregate(struct shm_header *shmdr, char * cfgfile);
 void bartlby_notification_log_debug(struct shm_header * shmhdr);
 
+
+
+//COMPAT
+#ifdef NEEDS_JSON_GET_EX
+int json_object_object_get_ex(struct json_object* jso, const char *key, struct json_object **value);
+#endif
+
+#ifdef NEEDS_JSON_INT64
+struct json_object* json_object_new_int64(int64_t i);
+#endif
+

@@ -313,6 +313,12 @@ dnl Check for jsonc library.
       AC_SUBST(JSON_INCDIR)
       AC_SUBST(JSON_ADDON)
       AC_SUBST(JSON_FLAG)
+
+      dnl Check if libjson is too old
+      AC_CHECK_LIB(json, json_object_object_get_ex,aaa=1,AC_DEFINE([NEEDS_JSON_GET_EX], [], [set if lilbjson is too old and a few wrappers will be built]))
+      AC_CHECK_LIB(json, json_object_new_int64,aaa=1,AC_DEFINE([NEEDS_JSON_INT64], [], [set if lilbjson is too old and a few wrappers will be built]))
+
+
   else 
         AC_MSG_ERROR([Unable to locate -ljson JSON support is required please install the libjson0-dev package])
   fi;
