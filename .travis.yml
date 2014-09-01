@@ -10,8 +10,8 @@ addons:
       name: "Bartlby/bartlby-core"
       description: "Bartlby Core"
     notification_email: helmut@januschka.com
-    build_command_prepend: ./configure --enable-nrpe --enable-ssl --prefix=$PWD/installation --with-user=travis
-    build_command:   make
+    build_command_prepend: make clean; ./configure --enable-nrpe --enable-ssl --prefix=$PWD/installation --with-user=travis
+    build_command:   make -j4
     branch_pattern: coverity_scan
 
 
