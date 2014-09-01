@@ -22,7 +22,7 @@ static int db_is_connected=0;
 static MYSQL * mysql_conn;
 
 #define CHK_FREE_CRED if(mysql_user != NULL) { free(mysql_user); } \
-					   if(mysql_pw != NULL) { free(mysql_user); } \
+					   if(mysql_pw != NULL) { free(mysql_pw); } \
 					   if(mysql_host != NULL) { free(mysql_host); } \
 					   if(mysql_db != NULL) { free(mysql_db); }
 
