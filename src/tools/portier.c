@@ -137,6 +137,40 @@ void bartlby_portier_exec_trigger(char * cfgfile, int standby_workers_only, cons
 	int notification_log_last_state;
 	json_object * jso;
 
+//NOTIFICATION UPSTREAM
+	char * cfg_upstream_enabled;
+	char * cfg_upstream_has_local_users;
+	
+
+	int upstream_enabled;
+	int upstream_has_local_users;
+	
+
+	cfg_upstream_enabled = getConfigValue("upstream_enabled", cfgfile);
+	cfg_upstream_has_local_users = getConfigValue("upstream_has_local_users", cfgfile);
+	
+
+	
+	if(cfg_upstream_enabled == NULL) {
+		cfg_upstream_enabled=strdup("false");	
+	}
+	if(strcmp(cfg_upstream_enabled, "true") == 0) {
+		upstream_enabled=1; 
+	} else {
+		upstream_enabled=0;
+	}
+	if(cfg_upstream_has_local_users == NULL) {
+		cfg_upstream_has_local_users=strdup("false");	
+	}
+	if(strcmp(cfg_upstream_has_local_users, "true") == 0) {
+		upstream_has_local_users=1;
+	} else {
+		upstream_has_local_users=0;
+	}
+	free(cfg_upstream_enabled);
+	free(cfg_upstream_has_local_users);
+//NOTIFICATION UPSTREAM
+
 	portier_passwd=getConfigValue("portier_password", cfgfile);
 	if(portier_passwd == NULL) {
 		bartlby_show_error(-222, "Portier Passwd unset", is_http);
@@ -180,61 +214,10 @@ void bartlby_portier_exec_trigger(char * cfgfile, int standby_workers_only, cons
 		base_dir=strdup("/");
 	}
 	if(setenv("BARTLBY_HOME", base_dir,1) == 0) {
-	}
+	} 
 			
 	for(x=0; x<shm_hdr->wrkcount; x++) {
-		if(service_is_in_time(wrkmap[x].notify_plan) > 0) {
-			if(bartlby_worker_has_service(&wrkmap[x], &local_svc, cfgfile, node_id) != 0 ) {
-				if(strstr(wrkmap[x].enabled_triggers, find_trigger) != NULL || strlen(wrkmap[x].enabled_triggers) == 0) {
-					if((bartlby_trigger_escalation(&wrkmap[x], &local_svc, standby_workers_only, node_id)) == FL) continue;
-					if((bartlby_trigger_worker_level(&wrkmap[x], &local_svc, node_id)) == FL) continue;
-					
-					/* if re-notify - and user is not active continue */
-					if(standby_workers_only == 2 && wrkmap[x].active != 1) continue;
-					/* if standby escalation message check if worker is in standby mode either skip him/her*/
-					if(standby_workers_only == 1 && wrkmap[x].active != 2) continue;
-					if(standby_workers_only == 0) { //if it is not a renotify, either standby escalation or normal notification
-						//Check what was the last state that got send to THIS user
-						notification_log_last_state=bartlby_notification_log_last_notification_state(shm_hdr,cfgfile,  local_svc.service_id, wrkmap[x].worker_id, (char*)trigger_name);
-						if(notification_log_last_state != -1) { //If no log entry found be nice and send it out
-							if(notification_log_last_state == local_svc.current_state) {
-								_log(LH_TRIGGER, B_LOG_DEBUG,"FIX  FLAPPING BUG - %d - %d (%d) - svc_id: %d", notification_log_last_state, local_svc.current_state, standby_workers_only, local_svc.service_id);
-								continue; //THIS SOLVES FLAPPING BUG
-							}
-						}
-									
-					}
-															
-						wrkmap[x].escalation_time=time(NULL);
-						CHECKED_ASPRINTF(&exec_str, "%s \"%s\" \"%s\" \"%s\" \"%s\" 2>&1", full_path, wrkmap[x].mail,wrkmap[x].icq,wrkmap[x].name, execline);
-						_log(LH_PORTIER, B_LOG_HASTO, "@NOT@%ld|%d|%d|%s|%s|UPSTREAMED - %s", local_svc.service_id, local_svc.notify_last_state ,local_svc.current_state,trigger_name,wrkmap[x].name, execline);
-						bartlby_notification_log_add(shm_hdr, cfgfile, wrkmap[x].worker_id, local_svc.service_id, local_svc.current_state, standby_workers_only, wrkmap[x].notification_aggregation_interval,  (char*)trigger_name);
-						if(wrkmap[x].notification_aggregation_interval > 0) { // 3 == THE AGGREGATION MESSAGE ITSELF
-							//As we aggregate the notifications - skip the execution of the trigger
-							free(exec_str);
-							continue;
-						}
-	
-						ptrigger=popen(exec_str, "r");
-						if(ptrigger != NULL) {
-							connection_timed_out=0;
-							alarm(CONN_TIMEOUT);
-							if(fgets(trigger_return, 1024, ptrigger) != NULL) {
-								trigger_return[strlen(trigger_return)-1]='\0';
-   								connection_timed_out=0;
-								alarm(0);
-							}
-							if(ptrigger != NULL) {
-								pclose(ptrigger);
-							}
-	    						
-						} 
-						free(exec_str);
-								
-								
-					} 
-				}
-		}
+		if(bartlby_trigger_per_worker(cfgfile, trigger_name, shm_hdr, &wrkmap[x], srvmap, 1, &local_svc, find_trigger, standby_workers_only, full_path, upstream_enabled, upstream_has_local_users, execline) == -2) continue;
 	}
 	free(base_dir);
 	free(find_trigger);	
@@ -498,9 +481,6 @@ int main(int argc, char ** argv) {
 
 
 	//buffers:
-	char textbuffer1[2048],textbuffer2[2048],textbuffer3[2048];
-	long longbuffer1, longbuffer2, longbuffer3, longbuffer4, longbuffer5, longbuffer6, longbuffer7, longbuffer8;
-	int intbuffer1, intbuffer2, intbuffer3,intbuffer4,intbuffer5,intbuffer6,intbuffer7;
 	json_object * jsoo[10];
 	
 
