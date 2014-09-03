@@ -64,7 +64,7 @@ void bartlby_portier_submit_passive_result(long service_id, int status, const ch
 void bartlby_portier_find_server_id(const char * server_name);
 void bartlby_portier_find_services(long server_id);
 void bartlby_portier_get_plugin_info(long service_id);
-void bartlby_portier_exec_trigger(char * cfgfile, int standby_workers_only, const char * execline, const char * trigger_name, int service_id, int server_id, int notify_last_state, int current_state, int recovery_outstanding, int node_id, const char * passwd);
+void bartlby_portier_exec_trigger(char * cfgfile, int standby_workers_only, const char * execline, const char * trigger_name, int service_id, int server_id, int notify_last_state, int current_state, int recovery_outstanding, int node_id, const char * passwd, const char * service_name);
 void bartlby_portier_exec_trigger_line(char * cfgfile, const char * execline, const char * passwd);
 
 void bartlby_portier_set_svc_state(long service_id, char * service_text, long current_state,long last_notify_send,long last_state_change,long service_ack_current,long service_retain_current,long handled, long last_check);
@@ -123,7 +123,7 @@ void bartlby_portier_exec_trigger_line(char * cfgfile, const char * execline, co
 
 }
 
-void bartlby_portier_exec_trigger(char * cfgfile, int standby_workers_only, const char * execline, const char * trigger_name, int service_id, int server_id, int notify_last_state, int current_state, int recovery_outstanding, int node_id, const char * passwd) {
+void bartlby_portier_exec_trigger(char * cfgfile, int standby_workers_only, const char * execline, const char * trigger_name, int service_id, int server_id, int notify_last_state, int current_state, int recovery_outstanding, int node_id, const char * passwd, const char * service_name) {
 
 	struct service local_svc;
 	int trigger_fine = 0;
@@ -183,8 +183,9 @@ void bartlby_portier_exec_trigger(char * cfgfile, int standby_workers_only, cons
 	local_svc.notify_last_state=notify_last_state;
 	local_svc.recovery_outstanding=recovery_outstanding;
 	local_svc.current_state=current_state;
+	strncpy(local_svc.service_name, (char*)service_name,1024);
 	
-	if(node_id != 0 && portier_passwd != NULL && strcmp(passwd, portier_passwd) == 0) {
+	if(portier_passwd != NULL && strcmp(passwd, portier_passwd) == 0) {
 		trigger_fine=1;	
 	}
 	
@@ -481,7 +482,7 @@ int main(int argc, char ** argv) {
 
 
 	//buffers:
-	json_object * jsoo[10];
+	json_object * jsoo[11];
 	
 
 
@@ -702,7 +703,8 @@ int main(int argc, char ** argv) {
 				 	 "current_state": 0,
 				 	 "recovery_outstanding": 0,
 				 	 "node_id": 0,
-				 	 "passwd": "password"
+				 	 "passwd": "password",
+				 	 "service_name": "service_name"
 				 	}
 				 >> {"error_code": 0, "trigger": "bartlby_load.sh", "output": "Sent SMS" }
 				 */
@@ -716,7 +718,8 @@ int main(int argc, char ** argv) {
 						json_object_object_get_ex(jso_in, "current_state", &jsoo[6]) &&
 						json_object_object_get_ex(jso_in, "recovery_outstanding", &jsoo[7]) &&
 						json_object_object_get_ex(jso_in, "node_id", &jsoo[8]) &&
-						json_object_object_get_ex(jso_in, "passwd", &jsoo[9])
+						json_object_object_get_ex(jso_in, "passwd", &jsoo[9]) &&
+						json_object_object_get_ex(jso_in, "service_name", &jsoo[10])
 						) {
 							
 							bartlby_portier_exec_trigger(cfgfile, 
@@ -729,7 +732,8 @@ int main(int argc, char ** argv) {
 														json_object_get_int(jsoo[6]),
 														json_object_get_int(jsoo[7]),
 														json_object_get_int(jsoo[8]),
-														json_object_get_string(jsoo[9])
+														json_object_get_string(jsoo[9]),
+														json_object_get_string(jsoo[10])
 														);
 			
 							PORTIER_CLEANUP;

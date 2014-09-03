@@ -380,6 +380,7 @@ int bartlby_trigger_per_worker(char * cfgfile, char * trigger_name, struct shm_h
 						
 					}
 				}
+	return 0;
 }
 
 
